@@ -1,6 +1,22 @@
 from sqlalchemy_serializer import SerializerMixin
-
+from sqlalchemy.orm import relationship
+from sqlalchemy.ext.associationproxy import association_proxy
 from config import db
+
+
+class Follower(db.Model, SerializerMixin):
+    __tablename__ = "followers"
+
+    id = db.Column(db.Integer, primary_key=True)
+    following_user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    followed_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    def __repr__(self):
+        return f"<Follower {self.id}>"
+
+    serialize_rules = ("-following_user", "-followed_by_user")
+
 
 class User(db.Model, SerializerMixin):
     __tablename__ = "users"
@@ -12,9 +28,23 @@ class User(db.Model, SerializerMixin):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
 
+    posts = relationship('Post', backref='user')
+    comments = relationship('Comment', backref='user')
+
+    # Many-to-many relationship: User.followers (following relationship)
+    followers_association = relationship(
+        "Follower",
+        foreign_keys=[Follower.following_user_id],
+        backref="following_user"
+    )
+    followers = association_proxy('followers_association', 'followed_by_user', creator=lambda user: Follower(followed_by_user=user))
+
     def __repr__(self):
         return f'<User {self.username}>'
-    
+
+    serialize_rules = ("-password", "-posts", "-comments", "-followers")
+
+
 class Post(db.Model, SerializerMixin):
     __tablename__ = "posts"
 
@@ -29,8 +59,13 @@ class Post(db.Model, SerializerMixin):
 
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
 
+    comments = relationship("Comment", backref="post")
+
     def __repr__(self):
         return f'<Post {self.title}>'
+    
+    serialize_rules = ("-user", "-comments")
+
 
 class Comment(db.Model, SerializerMixin):
     __tablename__ = "comments"
@@ -46,10 +81,5 @@ class Comment(db.Model, SerializerMixin):
     def __repr__(self):
         return f'<Comment {self.id}>'
 
-class Follower(db.Model, SerializerMixin):
-    __tablename__ = "followers"
+    serialize_rules = ("-user", "-post")
 
-    id = db.Column(db.Integer, primary_key=True)
-    following_user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    followed_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    created_at = db.Column(db.DateTime, server_default=db.func.now())
