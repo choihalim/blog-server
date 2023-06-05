@@ -39,10 +39,11 @@ with app.app_context():
 
     followers = []
     for i in range (20):
-        random_user = rc(users)
+        random_user1 = rc(users)
+        random_user2 = rc(users)
         f = Follower(
-            following_user_id = random_user.id,
-            followed_by_user_id = random_user.id
+            following_user_id = random_user1.id,
+            followed_by_user_id = random_user2.id
         )
         followers.append(f)
     db.session.add_all(followers)
