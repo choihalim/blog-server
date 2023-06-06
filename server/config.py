@@ -29,3 +29,7 @@ api = Api(app)
 
 # Instantiate CORS
 CORS(app)
+
+# Set up for auth:
+    # generate a secrete key `python -c 'import os; print(os.urandom(16))'`
+app.secret_key = b'\x89\x9b\xc2OE\xfb7\xec\x01\xdb\x88j\xc9\xeck\xc7'
