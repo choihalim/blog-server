@@ -3,58 +3,168 @@
 # Standard library imports
 
 # Remote library imports
-from flask import request
+from flask import Flask, request, make_response, jsonify, session
 from flask_restful import Resource
 
 # Local imports
 from config import app, db, api
 from models import User, Post, Comment, Follower
 
-# Views go here!
+
+# gets all of the posts
 @app.route('/')
 def index():
-    return f'<h1>Blogging Platform</h1>'
+    posts = Post.query.all()
+    if posts is None:
+        return make_response("Posts not found", 404)
+    
+    serialized_posts = [post.to_dict() for post in posts]
 
-@app.route('/login')
+    response = make_response(jsonify(serialized_posts), 200)
+    return response
+
+@app.route('/login', methods=["POST"])
 def login():
-    return f'<h1>Login Page</h1>'
+    if request.method == "POST":
+        rq = request.get_json()
+        user = User.query.filter(User.name.like(f"%{rq['username']}%", User.password == rq['password'])).first()
+        if user:
+            session['user_id'] = user.id
+            return make_response(user.to_dict(), 200)
+        else:
+            return { 'errors': [ 'Invalid username/password. Please try again.' ] }, 401
+        
+@app.route('/logout', methods=["DELETE"])
+def logout():
+    if request.method == "DELETE":
+        session['user_id'] = None
+        return make_response('', 204)
 
-@app.route('/create_account')
+@app.route('/create_account', methods=["POST"])
 def create_account():
-    return f'<h1>Create Account Page</h1>'
+    if request.method == "POST":
+        rq = request.get_json()
+        new_user = User(
+            username = rq['username'],
+            password = rq['password'],
+            avatar = rq['avatar']
+        )
+        if new_user:
+            db.session.add(new_user)
+            db.session.commit()
+            session['user_id'] = new_user.id
+            return make_response(new_user.to_dict(), 201)
+        else:
+            return { 'errors': [ 'Missing username/password or avatar. Please try again.' ] }, 401
 
-@app.route('/search')
-def search_empty():
-    return f'<h1>Search Page</h1>'
-
-@app.route('/search/<string:parameter>')
-def search(parameter):
-    return f'<h1>Search Page</h1>'
-
+# gets all of a user's posts
 @app.route('/<string:user>')
 def user_page(user):
-    return f"<h1>{user.username}'s Page</h1>"
+    posted_user = User.query.filter(User.username == user).first()
+    if posted_user is None:
+        return make_response("User not found", 404)
+    
+    posts = Post.query.filter(Post.user_id == posted_user.id).all()
+    serialized_posts = [post.to_dict() for post in posts]
 
+    response = make_response(jsonify(serialized_posts), 200)
+    return response
+
+# gets a user's post by id
 @app.route('/<string:user>/<int:post_id>')
 def user_post_page(user, post_id):
-    return f"<h1>{user.username}'s Page</h1>"
+    posted_user = User.query.filter(User.username == user).first()
+    if posted_user is None:
+        return make_response("User not found", 404)
+    
+    post = Post.query.filter(Post.id == post_id, Post.user_id == posted_user.id).first()
+    if post is None:
+        return make_response("Post not found", 404)
+    
+    response = make_response(jsonify(post.to_dict()), 200)
+    return response
 
-@app.route('/<string:user>/following')
-def following(user):
-    return f"<h1>{user.username}'s Following Page</h1>"
+# following for a specific user
+# @app.route('/following/<string:user>')
+# def following(user):
+#     return f"<h1>{user.username}'s Following Page</h1>"
 
-@app.route('/<string:user>/followers')
-def followers(user):
-    return f"<h1>{user.username}'s Followers Page</h1>"
+# followers for a specific user
+# @app.route('/followers/<string:user>')
+# def followers(user):
+#     query_user = User.query.filter(User.username == user).first()
+#     if query_user is None:
+#         return make_response("User Not Found", 404)
+#     followers = query_user.followers_association
+#     if followers:
+#         for follower in followers:
+#             followed_user = follower.followed_by_user
+#             print(followed_user.username)
+#         print(followers[0].id)
+#         print(query_user.id)
 
-@app.route('/<string:user>/create')
+#     return f"<h1>{user}'s Followers Page</h1>"
+
+# creates new post for corresponding user
+@app.route('/create/<string:user>', methods=["POST"])
 def create_post(user):
-    return f"<h1>Post New Blog</h1>"
+    creating_user = User.query.filter(User.username == user).first()
 
-@app.route('/<string:user>/edit/<int:post_id>')
+    if creating_user is None:
+        return make_response("User not found", 404)
+    
+    if request.method == "POST":
+        title = request.get_json()["title"]
+        body = request.get_json()["body"]
+        type = request.get_json()["type"]
+        tags = request.get_json()["tags"]
+        new_post = Post(
+            title=title,
+            body=body,
+            type=type,
+            tags=tags,
+            likes=0,
+            user_id=creating_user.id
+        )
+
+        db.session.add(new_post)
+        db.session.commit()
+
+        response = make_response(jsonify(new_post.to_dict()), 201)
+        return response
+    
+    return make_response("Not Found", 404)
+
+# updates a user's post
+@app.route('/edit/<string:user>/<int:post_id>', methods=["PATCH"])
 def edit_post(user, post_id):
-    return f"<h1>Edit Blog: {post_id}</h1>"
+    editing_user = User.query.filter(User.username == user).first()
+    if editing_user is None:
+        return make_response("User not found", 404)
+    
+    post = Post.query.filter(Post.id == post_id, Post.user_id == editing_user.id).first()
+    if post is None:
+        return make_response("Post not found", 404)
+    
+    if request.method == "PATCH":
+        title = request.get_json()["title"]
+        body = request.get_json()["body"]
+        type = request.get_json()["type"]
+        tags = request.get_json()["tags"]
+        if title:
+            post.title = title
+        if body:
+            post.body = body
+        if type:
+            post.type = type
+        if tags:
+            post.tags = tags
 
+        db.session.commit()
+        response = make_response("", 204)
+        return response
+
+    return make_response("Not Found", 404)
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
