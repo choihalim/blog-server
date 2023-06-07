@@ -64,6 +64,11 @@ class Post(db.Model, SerializerMixin):
     def __repr__(self):
         return f'<Post {self.title}>'
     
+    def post_info(self):
+        serialized = self.to_dict(rules=("-user", "-comments"))
+        serialized["username"] = self.user.username if self.user else None
+        return serialized
+    
     serialize_rules = ("-user", "-comments")
 
 

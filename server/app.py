@@ -5,6 +5,7 @@
 # Remote library imports
 from flask import Flask, request, make_response, jsonify, session
 from flask_restful import Resource
+from sqlalchemy.orm import joinedload
 
 # Local imports
 from config import app, db, api
@@ -15,10 +16,10 @@ from models import User, Post, Comment, Follower
 @app.route('/')
 def index():
     posts = Post.query.all()
-    if posts is None:
+    if not posts:
         return make_response("Posts not found", 404)
     
-    serialized_posts = [post.to_dict() for post in posts]
+    serialized_posts = [post.post_info() for post in posts]
 
     response = make_response(jsonify(serialized_posts), 200)
     return response
@@ -27,13 +28,14 @@ def index():
 def login():
     if request.method == "POST":
         rq = request.get_json()
-        user = User.query.filter(User.name.like(f"%{rq['username']}%", User.password == rq['password'])).first()
+        user = User.query.filter(User.username.like(f"%{rq['username']}%", 
+                User.password == rq['password'])).first()
         if user:
             session['user_id'] = user.id
             return make_response(user.to_dict(), 200)
         else:
             return { 'errors': [ 'Invalid username/password. Please try again.' ] }, 401
-        
+
 @app.route('/logout', methods=["DELETE"])
 def logout():
     if request.method == "DELETE":
@@ -133,7 +135,7 @@ def create_post(user):
         response = make_response(jsonify(new_post.to_dict()), 201)
         return response
     
-    return make_response("Not Found", 404)
+    # return make_response("Not Found", 404)
 
 # updates a user's post
 @app.route('/edit/<string:user>/<int:post_id>', methods=["PATCH"])
@@ -161,7 +163,7 @@ def edit_post(user, post_id):
             post.tags = tags
 
         db.session.commit()
-        response = make_response("", 204)
+        response = make_response("Edited successfully!", 204)
         return response
 
     return make_response("Not Found", 404)
