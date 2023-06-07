@@ -3,7 +3,7 @@
 # Standard library imports
 
 # Remote library imports
-from flask import Flask, request, make_response, jsonify, session
+from flask import Flask, request, make_response, jsonify, session, abort
 from flask_restful import Resource
 from sqlalchemy.orm import joinedload
 
@@ -18,23 +18,38 @@ def index():
     posts = Post.query.all()
     if not posts:
         return make_response("Posts not found", 404)
-    
+
     serialized_posts = [post.post_info() for post in posts]
 
     response = make_response(jsonify(serialized_posts), 200)
     return response
 
+
 @app.route('/login', methods=["POST"])
 def login():
     if request.method == "POST":
         rq = request.get_json()
-        user = User.query.filter(User.username.like(f"%{rq['username']}%", 
-                User.password == rq['password'])).first()
+        user = User.query.filter(User.username.like(f"%{rq['username']}%"),
+                                 User.password == rq['password']).first()
+
         if user:
             session['user_id'] = user.id
             return make_response(user.to_dict(), 200)
         else:
-            return { 'errors': [ 'Invalid username/password. Please try again.' ] }, 401
+            return {'errors': ['Invalid username/password. Please try again.']}, 401
+
+
+@app.route('/authorize')
+def authorize_session():
+    if not session.get('user_id'):
+        return {'errors': 'You must be logged in to do that. Please log in or make an account.'}, 401
+    else:
+        user = User.query.filter(User.id == session['user_id']).first()
+        if user:
+            return make_response(user.to_dict(), 200)
+        else:
+            abort(401)
+
 
 @app.route('/logout', methods=["DELETE"])
 def logout():
@@ -42,14 +57,15 @@ def logout():
         session['user_id'] = None
         return make_response('', 204)
 
+
 @app.route('/create_account', methods=["POST"])
 def create_account():
     if request.method == "POST":
         rq = request.get_json()
         new_user = User(
-            username = rq['username'],
-            password = rq['password'],
-            avatar = rq['avatar']
+            username=rq['username'],
+            password=rq['password'],
+            avatar=rq['avatar']
         )
         if new_user:
             db.session.add(new_user)
@@ -57,15 +73,17 @@ def create_account():
             session['user_id'] = new_user.id
             return make_response(new_user.to_dict(), 201)
         else:
-            return { 'errors': [ 'Missing username/password or avatar. Please try again.' ] }, 401
+            return {'errors': ['Missing username/password or avatar. Please try again.']}, 401
 
 # gets all of a user's posts
+
+
 @app.route('/<string:user>')
 def user_page(user):
     posted_user = User.query.filter(User.username == user).first()
     if posted_user is None:
         return make_response("User not found", 404)
-    
+
     posts = Post.query.filter(Post.user_id == posted_user.id).all()
     serialized_posts = [post.to_dict() for post in posts]
 
@@ -73,16 +91,19 @@ def user_page(user):
     return response
 
 # gets a user's post by id
+
+
 @app.route('/<string:user>/<int:post_id>')
 def user_post_page(user, post_id):
     posted_user = User.query.filter(User.username == user).first()
     if posted_user is None:
         return make_response("User not found", 404)
-    
-    post = Post.query.filter(Post.id == post_id, Post.user_id == posted_user.id).first()
+
+    post = Post.query.filter(
+        Post.id == post_id, Post.user_id == posted_user.id).first()
     if post is None:
         return make_response("Post not found", 404)
-    
+
     response = make_response(jsonify(post.to_dict()), 200)
     return response
 
@@ -108,13 +129,15 @@ def user_post_page(user, post_id):
 #     return f"<h1>{user}'s Followers Page</h1>"
 
 # creates new post for corresponding user
+
+
 @app.route('/create/<string:user>', methods=["POST"])
 def create_post(user):
     creating_user = User.query.filter(User.username == user).first()
 
     if creating_user is None:
         return make_response("User not found", 404)
-    
+
     if request.method == "POST":
         title = request.get_json()["title"]
         body = request.get_json()["body"]
@@ -134,20 +157,23 @@ def create_post(user):
 
         response = make_response(jsonify(new_post.to_dict()), 201)
         return response
-    
+
     # return make_response("Not Found", 404)
 
 # updates a user's post
+
+
 @app.route('/edit/<string:user>/<int:post_id>', methods=["PATCH"])
 def edit_post(user, post_id):
     editing_user = User.query.filter(User.username == user).first()
     if editing_user is None:
         return make_response("User not found", 404)
-    
-    post = Post.query.filter(Post.id == post_id, Post.user_id == editing_user.id).first()
+
+    post = Post.query.filter(
+        Post.id == post_id, Post.user_id == editing_user.id).first()
     if post is None:
         return make_response("Post not found", 404)
-    
+
     if request.method == "PATCH":
         title = request.get_json()["title"]
         body = request.get_json()["body"]
@@ -167,6 +193,7 @@ def edit_post(user, post_id):
         return response
 
     return make_response("Not Found", 404)
+
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
