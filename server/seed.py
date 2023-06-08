@@ -31,7 +31,8 @@ with app.app_context():
     users = []
     for i in range(30):
         u = User(
-            username = fake.simple_profile()['username']
+            username = fake.simple_profile()['username'],
+            email = fake.email()
         )
         users.append(u)
     db.session.add_all(users)
