@@ -3,7 +3,7 @@
 # Standard library imports
 
 # Remote library imports
-from flask import Flask, request, make_response, jsonify, session, abort
+from flask import Flask, request, make_response, jsonify, session, abort, url_for
 from flask_restful import Resource
 from sqlalchemy.orm import joinedload
 
@@ -13,7 +13,12 @@ from models import User, Post, Comment, Follower
 
 
 # gets all of the posts
+
 @app.route('/')
+def redirect():
+    return redirect(url_for('home'))
+
+@app.route('/home')
 def index():
     posts = Post.query.all()
     if not posts:
@@ -34,6 +39,7 @@ def login():
 
         if user:
             session['user_id'] = user.id
+            print(session['user_id'])
             return make_response(user.to_dict(), 200)
         else:
             return {'errors': ['Invalid username/password. Please try again.']}, 401
@@ -41,14 +47,12 @@ def login():
 
 @app.route('/authorize')
 def authorize_session():
-    if not session.get('user_id'):
+    user_id = session.get('user_id')
+    if not user_id:
         return {'errors': 'You must be logged in to do that. Please log in or make an account.'}, 401
     else:
-        user = User.query.filter(User.id == session['user_id']).first()
-        if user:
-            return make_response(user.to_dict(), 200)
-        else:
-            abort(401)
+        user = User.query.filter(User.id == user_id).first()
+        return make_response(user.to_dict(), 200)
 
 
 @app.route('/logout', methods=["DELETE"])
