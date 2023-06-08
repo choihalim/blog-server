@@ -90,7 +90,7 @@ def user_page(user):
         return make_response("User not found", 404)
 
     posts = Post.query.filter(Post.user_id == posted_user.id).all()
-    serialized_posts = [post.to_dict() for post in posts]
+    serialized_posts = [post.post_info() for post in posts]
 
     response = make_response(jsonify(serialized_posts), 200)
     return response
@@ -109,7 +109,7 @@ def user_post_page(user, post_id):
     if post is None:
         return make_response("Post not found", 404)
 
-    response = make_response(jsonify(post.to_dict()), 200)
+    response = make_response(jsonify(post.post_info()), 200)
     return response
 
 # following for a specific user
