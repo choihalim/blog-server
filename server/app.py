@@ -52,7 +52,8 @@ def authorize_session():
         return {'errors': 'You must be logged in to do that. Please log in or make an account.'}, 401
     else:
         user = User.query.filter(User.id == user_id).first()
-        return make_response(user.to_dict(), 200)
+        if user:
+            return make_response(user.to_dict(), 200)
 
 
 @app.route('/logout', methods=["DELETE"])
@@ -69,7 +70,7 @@ def create_account():
         new_user = User(
             username=rq['username'],
             password=rq['password'],
-            avatar=rq['avatar']
+            email=rq['email']
         )
         if new_user:
             db.session.add(new_user)
@@ -77,7 +78,7 @@ def create_account():
             session['user_id'] = new_user.id
             return make_response(new_user.to_dict(), 201)
         else:
-            return {'errors': ['Missing username/password or avatar. Please try again.']}, 401
+            return {'errors': ['Missing username/password or email. Please try again.']}, 401
 
 # gets all of a user's posts
 
