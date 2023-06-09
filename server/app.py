@@ -19,6 +19,7 @@ from models import User, Post, Comment, Follower
 def redirect():
     return redirect(url_for('home'))
 
+
 @app.route('/home')
 def index():
     posts = Post.query.all()
@@ -36,7 +37,7 @@ def login():
     if request.method == "POST":
         rq = request.get_json()
         user = User.query.filter(User.username.like(f"%{rq['username']}%"),
-                                User.password == rq['password']).first()
+                                 User.password == rq['password']).first()
 
         if user:
             session['user_id'] = user.id
@@ -90,8 +91,9 @@ def user_page(user):
     if posted_user is None:
         return make_response("User not found", 404)
 
-    posts = Post.query.filter(Post.user_id == posted_user.id).all()
-    serialized_posts = [post.to_dict() for post in posts]
+    posts = Post.query.join(User).filter(User.username == user).options(
+        db.contains_eager(Post.user)).all()
+    serialized_posts = [post.post_info() for post in posts]
 
     response = make_response(jsonify(serialized_posts), 200)
     return response
@@ -106,11 +108,11 @@ def user_post_page(user, post_id):
         return make_response("User not found", 404)
 
     post = Post.query.filter(
-        Post.id == post_id, Post.user_id == posted_user.id).first()
+        Post.id == post_id, Post.user_id == posted_user.id).options(db.contains_eager(Post.user)).first()
     if post is None:
         return make_response("Post not found", 404)
 
-    response = make_response(jsonify(post.to_dict()), 200)
+    response = make_response(jsonify(post.post_info()), 200)
     return response
 
 # following for a specific user
