@@ -104,7 +104,7 @@ def user_page(user):
 # gets a user's post by id
 
 
-@app.route('/<string:user>/<int:post_id>')
+@app.route('/<string:user>/<int:post_id>', methods = ['GET', 'DELETE'])
 def user_post_page(user, post_id):
     post = Post.query.join(User).filter(
         User.username == user, Post.id == post_id
@@ -112,9 +112,16 @@ def user_post_page(user, post_id):
     
     if post is None:
         return make_response("Post not found", 404)
-
-    response = make_response(jsonify(post.post_info()), 200)
-    return response
+    if request.method == "GET":
+        response = make_response(jsonify(post.post_info()), 200)
+        return response
+    elif request.method == "DELETE":
+        if post.user.username != user.username:
+            return make_response("Unauthorized", 401)
+        db.session.delete(post)
+        db.session.commit()
+        response = make_response("Post deleted successfully", 200)
+        return response
 
 # following for a specific user
 # @app.route('/following/<string:user>')
