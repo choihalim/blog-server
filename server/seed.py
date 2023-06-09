@@ -56,7 +56,7 @@ with app.app_context():
         p = Post(
             title = fake.first_name(),
             body = fake.text(),
-            type = rc(BLOG_TYPES),
+            blog_type = rc(BLOG_TYPES),
             tags = fake.text(),
             likes = randint(1, 400),
             user_id = random_user.id
@@ -78,3 +78,4 @@ with app.app_context():
         comments.append(c)
     db.session.add_all(comments)
     db.session.commit()
+    print("Seeding complete!")

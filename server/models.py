@@ -51,7 +51,7 @@ class Post(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String)
     body = db.Column(db.String)
-    type = db.Column(db.String)
+    blog_type = db.Column(db.String(50))
     tags = db.Column(db.String)
     likes = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, server_default=db.func.now())

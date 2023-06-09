@@ -3,6 +3,7 @@
 # Standard library imports
 
 # Remote library imports
+from datetime import datetime
 from flask import Flask, request, make_response, jsonify, session, abort, url_for
 from flask_restful import Resource
 from sqlalchemy.orm import joinedload
@@ -148,14 +149,17 @@ def create_post(user):
     if request.method == "POST":
         title = request.get_json()["title"]
         body = request.get_json()["body"]
-        type = request.get_json()["type"]
+        blog_type = request.get_json()["blog_type"]
         tags = request.get_json()["tags"]
+        tags_str = ",".join(tags)  # Serialize tags as a comma-separated string
+        updated_at = datetime.utcnow()
         new_post = Post(
             title=title,
             body=body,
-            type=type,
-            tags=tags,
+            blog_type=blog_type,
+            tags=tags_str,
             likes=0,
+            updated_at=updated_at,
             user_id=creating_user.id
         )
 
