@@ -54,7 +54,7 @@ with app.app_context():
     for i in range (50):
         random_user = rc(users)
         p = Post(
-            title = fake.first_name(),
+            title = fake.word().title(),
             body = fake.text(),
             blog_type = rc(BLOG_TYPES),
             tags = fake.text(),
