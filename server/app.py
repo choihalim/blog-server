@@ -7,6 +7,8 @@ from datetime import datetime
 from flask import Flask, request, make_response, jsonify, session, abort, url_for
 from flask_restful import Resource
 from sqlalchemy.orm import joinedload
+from sqlalchemy import desc
+
 
 # Local imports
 from config import app, db, api
@@ -22,6 +24,7 @@ def redirect():
 
 @app.route('/home')
 def index():
+    # posts = Post.query.order_by(desc(Post.created_at)).all()
     posts = Post.query.all()
     if not posts:
         return make_response("Posts not found", 404)
@@ -37,7 +40,7 @@ def login():
     if request.method == "POST":
         rq = request.get_json()
         user = User.query.filter(User.username.like(f"%{rq['username']}%"),
-                                 User.password == rq['password']).first()
+                                User.password == rq['password']).first()
 
         if user:
             session['user_id'] = user.id
@@ -151,13 +154,12 @@ def create_post(user):
         body = request.get_json()["body"]
         blog_type = request.get_json()["blog_type"]
         tags = request.get_json()["tags"]
-        tags_str = ",".join(tags)  # Serialize tags as a comma-separated string
         updated_at = datetime.utcnow()
         new_post = Post(
             title=title,
             body=body,
             blog_type=blog_type,
-            tags=tags_str,
+            tags=tags,
             likes=0,
             updated_at=updated_at,
             user_id=creating_user.id
