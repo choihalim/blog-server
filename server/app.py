@@ -205,6 +205,27 @@ def edit_post(user, post_id):
 
     return make_response("Not Found", 404)
 
+@app.route('/like/<string:user>/<int:post_id>', methods=["PATCH"])
+def like_post(user, post_id):
+    posted_user = User.query.filter(User.username == user).first()
+    if posted_user is None:
+        return make_response("User not found", 404)
+
+    post = Post.query.filter(
+        Post.id == post_id, Post.user_id == posted_user.id).first()
+    if post is None:
+        return make_response("Post not found", 404)
+
+    if request.method == "PATCH":
+        likes = request.get_json()["likes"]
+        if likes:
+            post.likes = likes
+        db.session.commit()
+        response = make_response("", 204)
+        return response
+
+    return make_response("Not Found", 404)
+
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
