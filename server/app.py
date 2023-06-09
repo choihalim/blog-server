@@ -106,12 +106,10 @@ def user_page(user):
 
 @app.route('/<string:user>/<int:post_id>')
 def user_post_page(user, post_id):
-    posted_user = User.query.filter(User.username == user).first()
-    if posted_user is None:
-        return make_response("User not found", 404)
-
-    post = Post.query.filter(
-        Post.id == post_id, Post.user_id == posted_user.id).options(db.contains_eager(Post.user)).first()
+    post = Post.query.join(User).filter(
+        User.username == user, Post.id == post_id
+    ).options(db.contains_eager(Post.user)).first()
+    
     if post is None:
         return make_response("Post not found", 404)
 
